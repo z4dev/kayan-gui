@@ -67,23 +67,81 @@ export function SignupForm() {
       return;
     }
 
+    // Add gender validation
+    if (!formData.gender || formData.gender.trim() === "") {
+      setError("Please select a gender");
+      setIsLoading(false);
+      return;
+    }
+
+    // Add other required field validations
+    if (!formData.firstName.trim()) {
+      setError("First name is required");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.lastName.trim()) {
+      setError("Last name is required");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.dateOfBirth) {
+      setError("Date of birth is required");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      setError("Phone number is required");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError("Email is required");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.password) {
+      setError("Password is required");
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      // Prepare the data - only include insuranceNumber if it has a value
+      const submitData: any = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        gender: formData.gender,
+        dateOfBirth: new Date(formData.dateOfBirth).toISOString(),
+        phoneNumber: formData.phoneNumber.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        rePassword: formData.rePassword,
+      };
+
+      // Only add insuranceNumber if it's not empty
+      if (formData.insuranceNumber && formData.insuranceNumber.trim() !== "") {
+        submitData.insuranceNumber = formData.insuranceNumber.trim();
+      }
+
+      console.log("Submitting data:", submitData);
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          dateOfBirth: new Date(formData.dateOfBirth).toISOString(),
-        }),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setSuccess(
-          "Registration successful! Please check your email for verification."
-        );
+        setSuccess("Registration successful!");
         // Reset form
         setFormData({
           firstName: "",
@@ -98,9 +156,23 @@ export function SignupForm() {
         });
       } else {
         const errorData = await response.json();
-        setError(errorData.message || "Registration failed. Please try again.");
+        console.log("Error response:", errorData);
+
+        // Handle different types of error responses
+        if (errorData.details && Array.isArray(errorData.details)) {
+          // Joi validation errors
+          const errorMessages = errorData.details
+            .map((detail: any) => detail.message)
+            .join(", ");
+          setError(errorMessages);
+        } else if (errorData.message) {
+          setError(errorData.message);
+        } else {
+          setError("Registration failed. Please try again.");
+        }
       }
     } catch (err) {
+      console.error("Network error:", err);
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
@@ -180,12 +252,10 @@ export function SignupForm() {
 
           <div className="space-y-2">
             <Label htmlFor="gender">Gender</Label>
-            <Select
-              value={formData.gender}
-              onValueChange={handleSelectChange}
-              required
-            >
-              <SelectTrigger>
+            <Select value={formData.gender} onValueChange={handleSelectChange}>
+              <SelectTrigger
+                className={!formData.gender && error ? "border-red-500" : ""}
+              >
                 <SelectValue placeholder="Select gender" />
               </SelectTrigger>
               <SelectContent>
